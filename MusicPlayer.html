@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Modify</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link rel='stylesheet' type='text/css' media='screen' href='MusicPlayer.css'>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.0.0/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/addons/p5.sound.min.js"></script>
+      <script src="https://unpkg.com/ml5@0.4.3/dist/ml5.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.6.2/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.6.2/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.6.2/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/live/3.1/firebase.js"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.3/css/all.css" integrity="sha384-SZXxX4whJ79/gErwcOYf+zWLeJdY/qpuqC4cAa9rOGUstPomtqpuNWT9wdPEn2fk" crossorigin="anonymous">
+    <script src='MusicPlayer.js'></script>
+   
+</head>
+<body onkey="">
+   
+    <div class="music-container" >
+    <label style="font-size: 30px; color: white;letter-spacing: 5px;">Upload your Music    -></label>
+   <button onclick="uploadMusic()" style="font-size: 25px; padding: 5px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border-radius: 10px; background-color: lightcoral;color: white; letter-spacing: 1px; word-spacing: 5px;cursor: pointer;">Upload Music</button>
+        <div class="music-body">
+            <div class="layer" id="layer">
+                <div class="volume-slider">
+                <span id="bar" class="bar"></span>
+                <input type='range' min='0.01' max='1' value='1' step='0.01' id="volumerange" oninput="setVolume()" class="volumerange"/>
+                </div>
+            </div>
+            <div class="top-icons">
+                <button class="volume btn" id="volume" onclick="volumeBar()">
+                    <i id="volumeicon" class="fas fa-volume-up"></i>
+                </button>
+                <button class="list btn" id="list">
+                    <i class="fas fa-list"></i>
+                </button>
+            </div>
+            <div class="music-img">
+                <img src="https://images.genius.com/ee202c6f724ffd4cf61bd01a205eeb47.1000x1000x1.jpg" alt="song-images" id="img">
+            </div>
+            <div class="music-info">
+                <h2 id="title">Yıldız Tozu</h2>
+            </div>
+            <audio src="https://raw.githubusercontent.com/ustabasiibrahim/music-player/master/assets/music/1.mp3" id="audio"></audio>
+            <div class="music-progress">
+                <div class="progress-bar">
+                    <span id="progress-line" class="progress-line"></span>
+                    <input type='range' min='0' max='100' value='0' class="progress" id="progress" />
+                </div>
+                <div class="duration">
+                    <span class="current-time">00:00</span>
+                    <span class="duration-time">00:00</span>
+                </div>
+            </div>
+            <div class="music-controls">
+                <button onclick="repeat()" class="repeat btn" id="repeat">
+                    <i class="fas fa-redo-alt"></i>
+                </button>
+                <div class="main-controls">
+                    <button onclick="prebutton();" class="prevbtn" id="prevbtn">
+                        <i class="fas fa-backward"></i>
+                    </button>
+                    <button class="playpause" id="playpause" onclick="playpause()">
+                        <i id="playpause-btn"class="fas fa-play"></i>
+                    </button>
+                    <button onclick="nextbutton()" class="nextbtn" id="nextbtn">
+                        <i class="fas fa-forward"></i>
+                    </button>
+                </div>
+                <button onclick="like()" class="like btn" id="like">
+                    <i id="likeicon" class="far fa-heart"></i>
+                </button>
+            </div>
+            <div class="songs-list" id="songs-list">
+                <button onclick="musicList()" class="list-close btn" id="listclose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+            const img = document.querySelector("#img");
+const playPause = document.querySelector("#playpause");
+const playPauseBtn = document.querySelector("#playpause-btn");
+const audio = document.querySelector("#audio");
+const title = document.querySelector("#title");
+const prevBtn = document.querySelector("#prevbtn");
+const nextBtn = document.querySelector("#nextbtn");
+const progress = document.querySelector("#progress");
+const progressBar = document.querySelector(".progress-bar");
+const currTime = document.querySelector(".current-time");
+const totalDuration = document.querySelector(".duration-time");
+const volume = document.querySelector("#volume");
+const layer = document.querySelector(".layer");
+const volBar = document.querySelector(".bar");
+const progressLine = document.querySelector(".progress-line");
+const volumeRange = document.querySelector(".volumerange");
+const repeatBtn = document.querySelector("#repeat");
+const likeBtn = document.querySelector("#like");
+const likeIcon = document.querySelector("#likeicon");
+const songListBtn = document.querySelector("#list");
+const songList = document.querySelector("#songs-list");
+const listCloseBtn = document.querySelector("#listclose");
+function updateProgress(e){
+  if (isPlaying) {
+    const { duration, currentTime } = e.target;
+    // Update progress bar width
+    const progressPercent = (currentTime / duration) * 100;
+    progress.value = progressPercent;
+    progressLine.style.width = `${progressPercent}%`;
+    if(progressPercent==100){
+      return nextSong();
+    }
+    // Calculate display for duration
+    const durationMinutes = Math.floor(duration / 60);
+    let durationSeconds = Math.floor(duration % 60);
+    if (durationSeconds < 10) {
+      durationSeconds = `0${durationSeconds}`;
+    }
+    // Delay switching duration Element to avoid NaN
+    if (durationSeconds) {
+      totalDuration.textContent = `${durationMinutes}:${durationSeconds}`;
+    }
+    // Calculate display for currentTime
+    let currentMinutes = Math.floor(currentTime / 60);
+    let currentSeconds = Math.floor(currentTime % 60);
+    if (currentSeconds < 10) {
+      currentSeconds = `0${currentSeconds}`;
+    }
+    currTime.textContent = `${currentMinutes}:${currentSeconds}`;
+  }
+}
+audio.addEventListener("timeupdate", updateProgress);
+function progressSlide(e){
+  const { value } = e.target;
+  const progressTime = Math.ceil((document.getElementById('audio').duration / 100) * value);
+  document.getElementById('audio').currentTime = progressTime;
+  console.log(progressTime);
+    if(!isPlaying) {
+      document.getElementById('progress-line').style.width = `${value}%`;    
+   }
+}
+progress.addEventListener('input',progressSlide);
+    </script>
+</body>
+</html>
